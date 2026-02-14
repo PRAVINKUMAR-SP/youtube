@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); // Deployment Trigger: V2 (Supabase)
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -9,9 +9,9 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
 const videoRoutes = require('./routes/videos');
-// const postRoutes = require('./routes/posts'); // TODO: Migrate to Supabase
-// const subscriptionRoutes = require('./routes/subscriptions'); // TODO: Migrate to Supabase
-// const searchRoutes = require('./routes/search'); // TODO: Migrate to Supabase
+const postRoutes = require('./routes/posts');
+const subscriptionRoutes = require('./routes/subscriptions');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 
@@ -78,9 +78,9 @@ app.use('/uploads', express.static(uploadsPath));
 app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/videos', videoRoutes);
-// app.use('/api/posts', postRoutes);
-// app.use('/api/subscriptions', subscriptionRoutes);
-// app.use('/api/search', searchRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/search', searchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

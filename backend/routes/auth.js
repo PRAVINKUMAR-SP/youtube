@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
                 password: hashedPassword,
                 avatar: `https://ui-avatars.com/api/?name=${username}&background=random`
             }])
-            .select()
+            .select('*, _id:id')
             .single();
 
         if (userError) throw userError;
@@ -51,7 +51,7 @@ router.post('/register', async (req, res) => {
                 owner_id: newUser.id,
                 avatar: newUser.avatar
             }])
-            .select()
+            .select('*, _id:id')
             .single();
 
         if (channelError) {
@@ -97,7 +97,8 @@ router.post('/login', async (req, res) => {
             .from('users')
             .select(`
                 *,
-                channel:channels!fk_user_channel(*)
+                _id:id,
+                channel:channels!fk_user_channel(*, _id:id)
             `)
             .eq('email', email)
             .single();

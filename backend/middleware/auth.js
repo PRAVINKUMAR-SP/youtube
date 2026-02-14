@@ -19,7 +19,8 @@ const auth = async (req, res, next) => {
             .from('users')
             .select(`
                 *,
-                channel:channels!fk_user_channel(*)
+                _id:id,
+                channel:channels!fk_user_channel(*, _id:id)
             `)
             .eq('id', decoded.userId)
             .single();
@@ -47,7 +48,8 @@ const optionalAuth = async (req, res, next) => {
                 .from('users')
                 .select(`
                     *,
-                    channel:channels!fk_user_channel(*)
+                    _id:id,
+                    channel:channels!fk_user_channel(*, _id:id)
                 `)
                 .eq('id', decoded.userId)
                 .single();

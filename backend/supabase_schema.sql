@@ -76,6 +76,28 @@ create table public.likes (
   unique(user_id, video_id)
 );
 
--- STORAGE BUCKETS (If using Supabase Storage)
--- Note: You need to create buckets 'avatars', 'banners', 'videos', 'thumbnails' in the dashboard.
--- Policies can be added later or set to public.
+-- POSTS Table
+create table public.posts (
+  id uuid default uuid_generate_v4() primary key,
+  content text not null,
+  image_url text default '',
+  channel_id uuid references public.channels(id) on delete cascade not null,
+  author_id uuid references public.users(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- POST_LIKES Table
+create table public.post_likes (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.users(id) on delete cascade not null,
+  post_id uuid references public.posts(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, post_id)
+);
+
+-- RLS Disable
+alter table public.posts disable row level security;
+alter table public.post_likes disable row level security;
+
+-- STORAGE BUCKETS
+-- Note: You need to create buckets 'avatars', 'banners', 'videos', 'thumbnails', 'posts' in the dashboard.

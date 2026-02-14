@@ -1,28 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const Post = require('../models/Post');
+const supabase = require('../config/supabase');
 const { auth } = require('../middleware/auth');
 
-const os = require('os');
-const fs = require('fs');
-
-// Ensure uploads directory exists (only for local dev)
-const uploadDir = process.env.NODE_ENV === 'production' ? os.tmpdir() : 'uploads/';
-if (process.env.NODE_ENV !== 'production' && !fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// Multer config for post images
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const uniqueName = `post-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
-});
+// Multer config - Memory Storage
+const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB
+
+// Helper: Upload file to Supabase Storage
+const uploadFile = async (file, bucket, path) => {
+    const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file.buffer, {
+            contentType: file.mimetype,
+            upsert: true
+        });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+    return publicData.publicUrl;
+};
 
 // Create post
 router.post('/', auth, upload.single('image'), async (req, res) => {
@@ -31,18 +28,34 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
             return res.status(400).json({ message: 'You need to create a channel first' });
         }
 
-        const post = new Post({
-            content: req.body.content,
-            imageUrl: req.file ? `/uploads/${req.file.filename}` : '',
-            channel: req.user.channel._id || req.user.channel,
-            author: req.user._id
-        });
+        let imageUrl = '';
+        if (req.file) {
+            const fileName = `post-${req.user.id}-${Date.now()}`;
+            imageUrl = await uploadFile(req.file, 'posts', fileName);
+        }
 
-        await post.save();
-        await post.populate('author', 'username avatar');
-        await post.populate('channel', 'name avatar handle');
+        const { data: post, error } = await supabase
+            .from('posts')
+            .insert([{
+                content: req.body.content,
+                image_url: imageUrl,
+                channel_id: req.user.channel.id || req.user.channel._id,
+                author_id: req.user.id
+            }])
+            .select(`
+                *,
+                _id:id,
+                author:users!inner(username, avatar, _id:id),
+                channel:channels!inner(name, avatar, handle, _id:id)
+            `)
+            .single();
 
-        res.status(201).json({ message: 'Post created', post });
+        if (error) throw error;
+
+        // Frontend compatibility: mapping image_url to imageUrl
+        const formattedPost = { ...post, imageUrl: post.image_url };
+
+        res.status(201).json({ message: 'Post created', post: formattedPost });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -51,30 +64,47 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 // Get posts by channel
 router.get('/channel/:channelId', async (req, res) => {
     try {
-        const posts = await Post.find({ channel: req.params.channelId })
-            .populate('author', 'username avatar')
-            .populate('channel', 'name avatar handle')
-            .sort({ createdAt: -1 });
-        res.json({ posts });
+        const { data: posts, error } = await supabase
+            .from('posts')
+            .select(`
+                *,
+                _id:id,
+                author:users!inner(username, avatar, _id:id),
+                channel:channels!inner(name, avatar, handle, _id:id)
+            `)
+            .eq('channel_id', req.params.channelId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const formattedPosts = posts.map(p => ({ ...p, imageUrl: p.image_url }));
+        res.json({ posts: formattedPosts });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// Like post
+// Like post (Toggle)
 router.put('/:id/like', auth, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
-        if (!post) return res.status(404).json({ message: 'Post not found' });
+        const post_id = req.params.id;
+        const user_id = req.user.id;
 
-        const likeIndex = post.likes.indexOf(req.user._id);
-        if (likeIndex > -1) {
-            post.likes.splice(likeIndex, 1);
+        const { data: existing } = await supabase
+            .from('post_likes')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('post_id', post_id)
+            .single();
+
+        if (existing) {
+            await supabase.from('post_likes').delete().eq('id', existing.id);
         } else {
-            post.likes.push(req.user._id);
+            await supabase.from('post_likes').insert([{ user_id, post_id }]);
         }
-        await post.save();
-        res.json({ likes: post.likes.length });
+
+        const { count } = await supabase.from('post_likes').select('id', { count: 'exact', head: true }).eq('post_id', post_id);
+        res.json({ likes: count });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -83,12 +113,14 @@ router.put('/:id/like', auth, async (req, res) => {
 // Delete post
 router.delete('/:id', auth, async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
+        const { data: post } = await supabase.from('posts').select('author_id').eq('id', req.params.id).single();
         if (!post) return res.status(404).json({ message: 'Post not found' });
-        if (post.author.toString() !== req.user._id.toString()) {
+
+        if (post.author_id !== req.user.id) {
             return res.status(403).json({ message: 'Not authorized' });
         }
-        await Post.findByIdAndDelete(req.params.id);
+
+        await supabase.from('posts').delete().eq('id', req.params.id);
         res.json({ message: 'Post deleted' });
     } catch (error) {
         res.status(500).json({ message: error.message });

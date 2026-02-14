@@ -75,7 +75,7 @@ router.post('/', auth, upload.fields([
                 tags: tags ? tags.split(',').map(t => t.trim()) : [],
                 duration: duration || '0:00'
             }])
-            .select()
+            .select('*, _id:id')
             .single();
 
         if (error) throw error;
@@ -104,8 +104,9 @@ router.get('/', async (req, res) => {
             .from('videos')
             .select(`
                 *,
-                channel:channels!inner(name, avatar, handle),
-                uploader:users!inner(username, avatar)
+                _id:id,
+                channel:channels!inner(name, avatar, handle, _id:id),
+                uploader:users!inner(username, avatar, _id:id)
             `, { count: 'exact' });
 
         if (category && category !== 'All') {
@@ -150,8 +151,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
             .from('videos')
             .select(`
                 *,
-                channel:channels!inner(name, avatar, handle, subscriber_count),
-                uploader:users!inner(username, avatar)
+                _id:id,
+                channel:channels!inner(name, avatar, handle, subscriber_count, _id:id),
+                uploader:users!inner(username, avatar, _id:id)
             `)
             .eq('id', req.params.id)
             .single();
@@ -163,7 +165,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
             .from('comments')
             .select(`
                 *,
-                user:users!inner(username, avatar)
+                _id:id,
+                user:users!inner(username, avatar, _id:id)
             `)
             .eq('video_id', req.params.id)
             .order('created_at', { ascending: false })
@@ -182,7 +185,8 @@ router.get('/channel/:channelId', async (req, res) => {
             .from('videos')
             .select(`
                  *,
-                channel:channels!inner(name, avatar, handle)
+                _id:id,
+                channel:channels!inner(name, avatar, handle, _id:id)
             `)
             .eq('channel_id', req.params.channelId)
             .order('created_at', { ascending: false });
@@ -249,7 +253,8 @@ router.post('/:id/comments', auth, async (req, res) => {
             }])
             .select(`
                 *,
-                user:users!inner(username, avatar)
+                _id:id,
+                user:users!inner(username, avatar, _id:id)
             `)
             .single();
 

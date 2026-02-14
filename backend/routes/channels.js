@@ -68,7 +68,7 @@ router.post('/', auth, upload.fields([
                 avatar: avatarUrl,
                 banner: bannerUrl
             }])
-            .select()
+            .select('*, _id:id')
             .single();
 
         if (error) {
@@ -93,7 +93,8 @@ router.get('/:id', async (req, res) => {
             .from('channels')
             .select(`
                 *,
-                owner:users!inner(username, avatar)
+                _id:id,
+                owner:users!inner(username, avatar, _id:id)
             `)
             .eq('id', req.params.id)
             .single();
@@ -114,7 +115,8 @@ router.get('/', async (req, res) => {
             .from('channels')
             .select(`
                 *,
-                owner:users!inner(username, avatar)
+                _id:id,
+                owner:users!inner(username, avatar, _id:id)
             `)
             .order('subscriber_count', { ascending: false })
             .limit(20);
@@ -156,7 +158,7 @@ router.put('/:id', auth, upload.fields([
             .from('channels')
             .update(updates)
             .eq('id', req.params.id)
-            .select()
+            .select('*, _id:id')
             .single();
 
         if (error) throw error;
