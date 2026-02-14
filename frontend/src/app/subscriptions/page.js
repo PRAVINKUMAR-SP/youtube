@@ -4,7 +4,7 @@ import Link from 'next/link';
 import VideoCard from '../../components/VideoCard';
 import { useAuth } from '../../context/AuthContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ytback-aff991tmg-pravinkumars-projects-014325e2.vercel.app/api';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
 export default function SubscriptionsPage() {
