@@ -71,7 +71,9 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== 'production') {
+// Render needs app.listen, Vercel does not. 
+// We detect if we are NOT on Vercel to start the server normally.
+if (!process.env.VERCEL) {
     app.listen(PORT, () => {
         console.log(`🚀 OpfFarmy API server running on port ${PORT}`);
     });
