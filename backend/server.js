@@ -9,9 +9,6 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
 const videoRoutes = require('./routes/videos');
-const authRoutes = require('./routes/auth');
-const channelRoutes = require('./routes/channels');
-const videoRoutes = require('./routes/videos');
 // const postRoutes = require('./routes/posts'); // TODO: Migrate to Supabase
 // const subscriptionRoutes = require('./routes/subscriptions'); // TODO: Migrate to Supabase
 // const searchRoutes = require('./routes/search'); // TODO: Migrate to Supabase
