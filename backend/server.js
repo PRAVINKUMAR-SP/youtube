@@ -20,7 +20,22 @@ connectDB();
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://yt-seven-beige.vercel.app',
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            'https://yt-seven-beige.vercel.app',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000'
+        ];
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            // Optional: You can choose to allow all or log warning
+            // For now, let's allow it to debug, or stricter:
+            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
+            return callback(null, true); // Temporarily allow all for debugging if sticky issues persist, or strictly:
+        }
+        return callback(null, true);
+    },
     credentials: true
 }));
 app.use(express.json());
