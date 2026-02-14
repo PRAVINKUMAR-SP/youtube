@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const connectDB = require('./config/db');
+const { connectDB, getLastError } = require('./config/db');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -28,12 +28,26 @@ app.use(express.urlencoded({ extended: true }));
 
 // Root route (Moved higher for better matching)
 app.get('/', (req, res) => {
-    const dbStatus = require('mongoose').connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected (Check Environment Variables)';
+    const readyState = require('mongoose').connection.readyState;
+    const dbStatus = readyState === 1 ? '✅ Connected' : '❌ Disconnected';
+    const errorMsg = getLastError() || (readyState === 0 ? 'Connecting...' : 'Unknown Error');
+
     res.send(`
-        <h1>🚀 OpfFarmy API is running!</h1>
-        <p>Database Status: <strong>${dbStatus}</strong></p>
-        <p>Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
-        ${!process.env.MONGODB_URI ? '<p style="color:red"><strong>Warning:</strong> MONGODB_URI is missing in Vercel settings!</p>' : ''}
+        <div style="font-family: sans-serif; padding: 20px;">
+            <h1>🚀 OpfFarmy API is running!</h1>
+            <p>Database Status: <strong>${dbStatus}</strong></p>
+            ${readyState !== 1 ? `<div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; border: 1px solid #ef5350;">
+                <strong>Error Details:</strong> ${errorMsg}
+                <br><br>
+                <em>Common Fixes:</em>
+                <ul>
+                    <li>Check if IP <code>0.0.0.0/0</code> is whitelisted in MongoDB Atlas Network Access.</li>
+                    <li>Check if the username/password in MONGODB_URI are correct.</li>
+                    <li>Ensure MONGODB_URI is added to Vercel/Render Environment Variables.</li>
+                </ul>
+            </div>` : ''}
+            <p>Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
+        </div>
     `);
 });
 

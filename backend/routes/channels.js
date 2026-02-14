@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
         cb(null, uniqueName);
     }
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 
 // Create channel
 router.post('/', auth, upload.fields([
@@ -107,7 +107,7 @@ router.put('/:id', auth, upload.fields([
         if (req.files?.avatar?.[0]) updates.avatar = `/uploads/${req.files.avatar[0].filename}`;
         if (req.files?.banner?.[0]) updates.banner = `/uploads/${req.files.banner[0].filename}`;
 
-        const updatedChannel = await Channel.findByIdAndUpdate(req.params.id, updates, { new: true });
+        const updatedChannel = await Channel.findByIdAndUpdate(req.params.id, updates, { returnDocument: 'after' });
         res.json({ message: 'Channel updated', channel: updatedChannel });
     } catch (error) {
         res.status(500).json({ message: error.message });

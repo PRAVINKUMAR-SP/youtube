@@ -130,7 +130,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
         const video = await Video.findByIdAndUpdate(
             req.params.id,
             { $inc: { views: 1 } },
-            { new: true }
+            { returnDocument: 'after' }
         )
             .populate({ path: 'channel', select: 'name avatar handle subscriberCount' })
             .populate('uploader', 'username avatar');
