@@ -26,6 +26,20 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root route (Moved higher for better matching)
+app.get('/', (req, res) => {
+    const dbStatus = require('mongoose').connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected (Check Environment Variables)';
+    res.send(`
+        <h1>🚀 OpfFarmy API is running!</h1>
+        <p>Database Status: <strong>${dbStatus}</strong></p>
+        <p>Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
+        ${!process.env.MONGODB_URI ? '<p style="color:red"><strong>Warning:</strong> MONGODB_URI is missing in Vercel settings!</p>' : ''}
+    `);
+});
+
+// Diagnostic test route
+app.get('/test', (req, res) => res.json({ message: 'Backend is reachable!' }));
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -36,17 +50,6 @@ app.use('/api/videos', videoRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/search', searchRoutes);
-
-// Root route
-app.get('/', (req, res) => {
-    const dbStatus = require('mongoose').connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected (Check Environment Variables)';
-    res.send(`
-        <h1>🚀 OpfFarmy API is running!</h1>
-        <p>Database Status: <strong>${dbStatus}</strong></p>
-        <p>The backend is healthy. Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
-        ${!process.env.MONGODB_URI ? '<p style="color:red"><strong>Warning:</strong> MONGODB_URI is missing in Vercel settings!</p>' : ''}
-    `);
-});
 
 // Health check
 app.get('/api/health', (req, res) => {
