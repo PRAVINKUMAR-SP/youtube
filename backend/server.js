@@ -39,7 +39,13 @@ app.use('/api/search', searchRoutes);
 
 // Root route
 app.get('/', (req, res) => {
-    res.send('<h1>🚀 OpfFarmy API is running!</h1><p>The backend is healthy. Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>');
+    const dbStatus = require('mongoose').connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected (Check Environment Variables)';
+    res.send(`
+        <h1>🚀 OpfFarmy API is running!</h1>
+        <p>Database Status: <strong>${dbStatus}</strong></p>
+        <p>The backend is healthy. Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
+        ${!process.env.MONGODB_URI ? '<p style="color:red"><strong>Warning:</strong> MONGODB_URI is missing in Vercel settings!</p>' : ''}
+    `);
 });
 
 // Health check
