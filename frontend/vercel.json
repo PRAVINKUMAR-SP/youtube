@@ -1,0 +1,12 @@
+{
+    "version": 2,
+    "buildCommand": "next build",
+    "installCommand": "npm install",
+    "framework": "nextjs",
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/$1"
+        }
+    ]
+}

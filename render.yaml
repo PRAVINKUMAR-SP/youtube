@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: opffarmy-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromContext: true
+      - key: JWT_SECRET
+        fromContext: true
+      - key: FRONTEND_URL
+        fromContext: true
