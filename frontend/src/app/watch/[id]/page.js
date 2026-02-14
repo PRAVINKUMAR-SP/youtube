@@ -31,9 +31,9 @@ export default function WatchPage() {
             setComments(data.comments || []);
 
             // Check subscription status
-            if (token && data.video?.channel?._id) {
+            if (token && (data.video?.channel?.id || data.video?.channel?._id)) {
                 try {
-                    const subRes = await fetch(`${API_URL}/subscriptions/check/${data.video.channel._id}`, {
+                    const subRes = await fetch(`${API_URL}/subscriptions/check/${data.video.channel.id || data.video.channel._id}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     const subData = await subRes.json();
@@ -59,7 +59,7 @@ export default function WatchPage() {
     const handleSubscribe = async () => {
         if (!token) return alert('Please sign in to subscribe');
         try {
-            const data = await apiCall(`/subscriptions/${video.channel._id}`, { method: 'POST' });
+            const data = await apiCall(`/subscriptions/${video.channel.id || video.channel._id}`, { method: 'POST' });
             setIsSubscribed(data.subscribed);
             setVideo(prev => ({
                 ...prev,
@@ -125,7 +125,7 @@ export default function WatchPage() {
 
                 <div className="watch-actions">
                     <div className="watch-channel-info">
-                        <Link href={`/channel/${video.channel?._id}`} className="watch-channel-avatar">
+                        <Link href={`/channel/${video.channel?.id || video.channel?._id}`} className="watch-channel-avatar">
                             {video.channel?.avatar ? (
                                 <img src={`${API_BASE}${video.channel.avatar}`} alt="" />
                             ) : (
@@ -133,7 +133,7 @@ export default function WatchPage() {
                             )}
                         </Link>
                         <div className="watch-channel-details">
-                            <Link href={`/channel/${video.channel?._id}`} className="watch-channel-name">
+                            <Link href={`/channel/${video.channel?.id || video.channel?._id}`} className="watch-channel-name">
                                 {video.channel?.name}
                             </Link>
                             <span className="watch-channel-subs">

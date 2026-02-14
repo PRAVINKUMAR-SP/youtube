@@ -63,7 +63,7 @@ function SearchContent() {
                             <h3 className="search-section-title">Channels</h3>
                             <div className="channel-results">
                                 {channels.map(ch => (
-                                    <Link key={ch._id} href={`/channel/${ch._id}`} className="search-channel-card">
+                                    <Link key={ch.id || ch._id} href={`/channel/${ch.id || ch._id}`} className="search-channel-card">
                                         <div className="search-channel-avatar">
                                             {ch.avatar ? (
                                                 <img src={`${API_BASE}${ch.avatar}`} alt="" />

@@ -237,7 +237,7 @@ export default function Navbar({ onToggleSidebar }) {
                                     </div>
                                     <div className="dropdown-divider"></div>
                                     {user.channel && (
-                                        <Link href={`/channel/${user.channel._id || user.channel}`} className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+                                        <Link href={`/channel/${user.channel?.id || user.channel?._id || user.channel}`} className="dropdown-item" onClick={() => setShowUserMenu(false)}>
                                             <svg viewBox="0 0 24 24" width="20" height="20" fill="#aaa"><path d="M4 20h14v2H4c-1.1 0-2-.9-2-2V6h2v14zM21.41 2.99L16.58 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5.41l-.59-.42zM12 5.5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z" /></svg>
                                             Your Channel
                                         </Link>

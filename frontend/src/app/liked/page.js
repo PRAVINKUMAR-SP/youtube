@@ -22,7 +22,7 @@ export default function LikedPage() {
             const res = await fetch(`${API_URL}/videos?limit=100`);
             const data = await res.json();
             const liked = (data.videos || []).filter(v =>
-                v.likes && v.likes.some(l => (l._id || l) === user._id)
+                v.likes && v.likes.some(l => (l.id || l._id || l) === (user.id || user._id))
             );
             setVideos(liked);
         } catch (err) {
@@ -66,7 +66,7 @@ export default function LikedPage() {
             ) : videos.length > 0 ? (
                 <div className="video-grid">
                     {videos.map(video => (
-                        <VideoCard key={video._id} video={video} />
+                        <VideoCard key={video.id || video._id} video={video} />
                     ))}
                 </div>
             ) : (

@@ -31,7 +31,7 @@ export default function LibraryPage() {
                 </Link>
 
                 {user.channel && (
-                    <Link href={`/channel/${user.channel._id || user.channel}`} style={{ background: '#1a1a1a', border: '1px solid #272727', borderRadius: 12, padding: 24, textDecoration: 'none', transition: 'background 0.2s' }}>
+                    <Link href={`/channel/${user.channel.id || user.channel._id || user.channel}`} style={{ background: '#1a1a1a', border: '1px solid #272727', borderRadius: 12, padding: 24, textDecoration: 'none', transition: 'background 0.2s' }}>
                         <svg viewBox="0 0 24 24" width="40" height="40" fill="#ff4444" style={{ marginBottom: 12 }}>
                             <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
                         </svg>

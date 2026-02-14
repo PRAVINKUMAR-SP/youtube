@@ -27,7 +27,7 @@ export default function SubscriptionsPage() {
             const allVideos = [];
             for (const ch of (data.subscriptions || [])) {
                 try {
-                    const vRes = await fetch(`${API_URL}/videos/channel/${ch._id}`);
+                    const vRes = await fetch(`${API_URL}/videos/channel/${ch.id || ch._id}`);
                     const vData = await vRes.json();
                     allVideos.push(...(vData.videos || []));
                 } catch (e) { }
@@ -62,7 +62,7 @@ export default function SubscriptionsPage() {
             {channels.length > 0 && (
                 <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none' }}>
                     {channels.map(ch => (
-                        <Link key={ch._id} href={`/channel/${ch._id}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textDecoration: 'none', minWidth: 72 }}>
+                        <Link key={ch.id || ch._id} href={`/channel/${ch.id || ch._id}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textDecoration: 'none', minWidth: 72 }}>
                             <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #ff4444, #ff6b6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 22, overflow: 'hidden' }}>
                                 {ch.avatar ? <img src={`${API_BASE}${ch.avatar}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ch.name?.[0]?.toUpperCase()}
                             </div>

@@ -95,7 +95,7 @@ export default function ChannelPage() {
         </div>
     );
 
-    const isOwner = user?.channel && (user.channel._id === id || user.channel === id);
+    const isOwner = user?.channel && (user.channel.id === id || user.channel._id === id || user.channel === id);
 
     return (
         <div className="channel-page page-fade-in">
@@ -150,7 +150,7 @@ export default function ChannelPage() {
             {activeTab === 'videos' && (
                 <div className="video-grid">
                     {videos.length > 0 ? videos.map(v => (
-                        <VideoCard key={v._id} video={v} />
+                        <VideoCard key={v.id || v._id} video={v} />
                     )) : (
                         <p style={{ color: '#aaa', gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>No videos yet</p>
                     )}
@@ -160,7 +160,7 @@ export default function ChannelPage() {
             {activeTab === 'posts' && (
                 <div className="posts-list">
                     {posts.length > 0 ? posts.map(post => (
-                        <div key={post._id} className="post-card">
+                        <div key={post.id || post._id} className="post-card">
                             <div className="post-header">
                                 <div className="channel-avatar-small" style={{ width: 36, height: 36 }}>
                                     {channel.avatar ? (

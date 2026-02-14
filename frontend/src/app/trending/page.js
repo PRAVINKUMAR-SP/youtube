@@ -43,7 +43,7 @@ export default function TrendingPage() {
             ) : videos.length > 0 ? (
                 <div className="video-grid">
                     {videos.map(video => (
-                        <VideoCard key={video._id} video={video} />
+                        <VideoCard key={video.id || video._id} video={video} />
                     ))}
                 </div>
             ) : (

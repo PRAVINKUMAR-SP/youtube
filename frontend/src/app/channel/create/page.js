@@ -28,7 +28,7 @@ export default function CreateChannelPage() {
         return (
             <div className="upload-page page-fade-in" style={{ textAlign: 'center', padding: '80px 20px' }}>
                 <h2>You already have a channel!</h2>
-                <button className="btn btn-primary" onClick={() => router.push(`/channel/${user.channel._id || user.channel}`)} style={{ marginTop: 16 }}>View Channel</button>
+                <button className="btn btn-primary" onClick={() => router.push(`/channel/${user.channel?.id || user.channel?._id || user.channel}`)} style={{ marginTop: 16 }}>View Channel</button>
             </div>
         );
     }
@@ -54,7 +54,7 @@ export default function CreateChannelPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
             await refreshUser();
-            router.push(`/channel/${data.channel._id}`);
+            router.push(`/channel/${data.channel?.id || data.channel?._id}`);
         } catch (err) {
             setError(err.message);
         }

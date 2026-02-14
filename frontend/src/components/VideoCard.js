@@ -27,7 +27,7 @@ export default function VideoCard({ video }) {
 
     return (
         <div className="video-card">
-            <Link href={`/watch/${video._id}`} className="thumbnail-wrapper">
+            <Link href={`/watch/${video.id || video._id}`} className="thumbnail-wrapper">
                 <div className="thumbnail">
                     {video.thumbnailUrl ? (
                         <img src={`${API_BASE}${video.thumbnailUrl}`} alt={video.title} />
@@ -43,7 +43,7 @@ export default function VideoCard({ video }) {
             </Link>
             <div className="video-info">
                 {video.channel && (
-                    <Link href={`/channel/${video.channel._id}`} className="channel-avatar-small">
+                    <Link href={`/channel/${video.channel?.id || video.channel?._id}`} className="channel-avatar-small">
                         {video.channel.avatar ? (
                             <img src={`${API_BASE}${video.channel.avatar}`} alt="" />
                         ) : (
@@ -52,9 +52,9 @@ export default function VideoCard({ video }) {
                     </Link>
                 )}
                 <div className="video-details">
-                    <Link href={`/watch/${video._id}`} className="video-title">{video.title}</Link>
+                    <Link href={`/watch/${video.id || video._id}`} className="video-title">{video.title}</Link>
                     {video.channel && (
-                        <Link href={`/channel/${video.channel._id}`} className="channel-name">{video.channel.name}</Link>
+                        <Link href={`/channel/${video.channel?.id || video.channel?._id}`} className="channel-name">{video.channel.name}</Link>
                     )}
                     <p className="video-meta">
                         {formatViews(video.views)} views • {timeAgo(video.createdAt)}
