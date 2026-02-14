@@ -1,29 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const Channel = require('../models/Channel');
-const User = require('../models/User');
+const supabase = require('../config/supabase');
 const { auth } = require('../middleware/auth');
 
-const os = require('os');
-const fs = require('fs');
-
-// Ensure uploads directory exists (only for local dev)
-const uploadDir = process.env.NODE_ENV === 'production' ? os.tmpdir() : 'uploads/';
-if (process.env.NODE_ENV !== 'production' && !fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// Multer config for channel images
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const uniqueName = `channel-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
+// Multer config - Memory Storage for Supabase Uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+
+// Helper: Upload file to Supabase Storage
+const uploadFile = async (file, bucket, path) => {
+    const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file.buffer, {
+            contentType: file.mimetype,
+            upsert: true
+        });
+    if (error) throw error;
+
+    // Get Public URL
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+    return publicData.publicUrl;
+};
 
 // Create channel
 router.post('/', auth, upload.fields([
@@ -31,32 +32,56 @@ router.post('/', auth, upload.fields([
     { name: 'banner', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        // Check if user already has a channel
-        if (req.user.channel) {
+        // Check if user already has a channel via the auth middleware user object
+        // Note: req.user comes from Supabase query in auth middleware
+        if (req.user.channel_id || req.user.channel) {
             return res.status(400).json({ message: 'You already have a channel' });
         }
 
         const { name, handle, description } = req.body;
+        const owner_id = req.user.id;
+        const validHandle = handle.startsWith('@') ? handle : `@${handle}`;
 
-        const channel = new Channel({
-            name,
-            handle: handle.startsWith('@') ? handle : `@${handle}`,
-            description,
-            owner: req.user._id,
-            avatar: req.files?.avatar?.[0] ? `/uploads/${req.files.avatar[0].filename}` : '',
-            banner: req.files?.banner?.[0] ? `/uploads/${req.files.banner[0].filename}` : ''
-        });
+        let avatarUrl = '';
+        let bannerUrl = '';
 
-        await channel.save();
+        // Upload Avatar
+        if (req.files?.avatar?.[0]) {
+            const fileName = `avatar-${owner_id}-${Date.now()}`;
+            avatarUrl = await uploadFile(req.files.avatar[0], 'avatars', fileName);
+        }
 
-        // Update user with channel reference
-        await User.findByIdAndUpdate(req.user._id, { channel: channel._id });
+        // Upload Banner
+        if (req.files?.banner?.[0]) {
+            const fileName = `banner-${owner_id}-${Date.now()}`;
+            bannerUrl = await uploadFile(req.files.banner[0], 'banners', fileName);
+        }
+
+        // Insert Channel
+        const { data: channel, error } = await supabase
+            .from('channels')
+            .insert([{
+                name,
+                handle: validHandle,
+                description,
+                owner_id,
+                avatar: avatarUrl,
+                banner: bannerUrl
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === '23505') return res.status(400).json({ message: 'Channel handle already taken' });
+            throw error;
+        }
+
+        // Link Channel to User
+        await supabase.from('users').update({ channel_id: channel.id }).eq('id', owner_id);
 
         res.status(201).json({ message: 'Channel created successfully', channel });
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(400).json({ message: 'Channel handle already taken' });
-        }
+        console.error('Create Channel Error:', error);
         res.status(500).json({ message: error.message });
     }
 });
@@ -64,8 +89,16 @@ router.post('/', auth, upload.fields([
 // Get channel by ID
 router.get('/:id', async (req, res) => {
     try {
-        const channel = await Channel.findById(req.params.id).populate('owner', 'username avatar');
-        if (!channel) {
+        const { data: channel, error } = await supabase
+            .from('channels')
+            .select(`
+                *,
+                owner:users!inner(username, avatar)
+            `)
+            .eq('id', req.params.id)
+            .single();
+
+        if (error || !channel) {
             return res.status(404).json({ message: 'Channel not found' });
         }
         res.json({ channel });
@@ -77,10 +110,16 @@ router.get('/:id', async (req, res) => {
 // Get all channels
 router.get('/', async (req, res) => {
     try {
-        const channels = await Channel.find()
-            .populate('owner', 'username avatar')
-            .sort({ subscriberCount: -1 })
+        const { data: channels, error } = await supabase
+            .from('channels')
+            .select(`
+                *,
+                owner:users!inner(username, avatar)
+            `)
+            .order('subscriber_count', { ascending: false })
             .limit(20);
+
+        if (error) throw error;
         res.json({ channels });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -93,21 +132,35 @@ router.put('/:id', auth, upload.fields([
     { name: 'banner', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        const channel = await Channel.findById(req.params.id);
-        if (!channel) {
-            return res.status(404).json({ message: 'Channel not found' });
-        }
-        if (channel.owner.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
+        // Verify ownership
+        const { data: channel } = await supabase.from('channels').select('owner_id').eq('id', req.params.id).single();
+
+        if (!channel) return res.status(404).json({ message: 'Channel not found' });
+        if (channel.owner_id !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
 
         const updates = {};
         if (req.body.name) updates.name = req.body.name;
         if (req.body.description) updates.description = req.body.description;
-        if (req.files?.avatar?.[0]) updates.avatar = `/uploads/${req.files.avatar[0].filename}`;
-        if (req.files?.banner?.[0]) updates.banner = `/uploads/${req.files.banner[0].filename}`;
 
-        const updatedChannel = await Channel.findByIdAndUpdate(req.params.id, updates, { returnDocument: 'after' });
+        // Upload New Files
+        if (req.files?.avatar?.[0]) {
+            const fileName = `avatar-${req.user.id}-${Date.now()}`;
+            updates.avatar = await uploadFile(req.files.avatar[0], 'avatars', fileName);
+        }
+        if (req.files?.banner?.[0]) {
+            const fileName = `banner-${req.user.id}-${Date.now()}`;
+            updates.banner = await uploadFile(req.files.banner[0], 'banners', fileName);
+        }
+
+        const { data: updatedChannel, error } = await supabase
+            .from('channels')
+            .update(updates)
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
         res.json({ message: 'Channel updated', channel: updatedChannel });
     } catch (error) {
         res.status(500).json({ message: error.message });

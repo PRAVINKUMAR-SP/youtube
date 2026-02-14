@@ -1,42 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const Video = require('../models/Video');
-const Channel = require('../models/Channel');
-const Comment = require('../models/Comment');
+const supabase = require('../config/supabase');
 const { auth, optionalAuth } = require('../middleware/auth');
 
-const os = require('os');
-const fs = require('fs');
-
-// Ensure uploads directory exists (only for local dev)
-const uploadDir = process.env.NODE_ENV === 'production' ? os.tmpdir() : 'uploads/';
-if (process.env.NODE_ENV !== 'production' && !fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// Multer config for video uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const uniqueName = `video-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    }
-});
+// Multer config - Memory Storage
+const storage = multer.memoryStorage();
 const upload = multer({
     storage,
     limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
     fileFilter: (req, file, cb) => {
         if (file.fieldname === 'video') {
-            const videoTypes = /mp4|avi|mov|mkv|webm/;
-            const extname = videoTypes.test(path.extname(file.originalname).toLowerCase());
-            if (extname) return cb(null, true);
+            if (file.mimetype.startsWith('video/')) return cb(null, true);
             cb(new Error('Only video files are allowed'));
         } else if (file.fieldname === 'thumbnail') {
-            const imageTypes = /jpeg|jpg|png|webp/;
-            const extname = imageTypes.test(path.extname(file.originalname).toLowerCase());
-            if (extname) return cb(null, true);
+            if (file.mimetype.startsWith('image/')) return cb(null, true);
             cb(new Error('Only image files are allowed for thumbnails'));
         } else {
             cb(null, true);
@@ -44,79 +22,113 @@ const upload = multer({
     }
 });
 
+// Helper: Upload file to Supabase Storage
+const uploadFile = async (file, bucket, path) => {
+    const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file.buffer, {
+            contentType: file.mimetype,
+            upsert: true
+        });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path);
+    return publicData.publicUrl;
+};
+
 // Upload video
 router.post('/', auth, upload.fields([
     { name: 'video', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        if (!req.user.channel) {
+        if (!req.user.channel_id) {
             return res.status(400).json({ message: 'You need to create a channel first' });
         }
-
         if (!req.files?.video?.[0]) {
             return res.status(400).json({ message: 'Video file is required' });
         }
 
         const { title, description, category, tags, duration } = req.body;
+        const channel_id = req.user.channel_id;
 
-        const video = new Video({
-            title,
-            description,
-            videoUrl: `/uploads/${req.files.video[0].filename}`,
-            thumbnailUrl: req.files?.thumbnail?.[0] ? `/uploads/${req.files.thumbnail[0].filename}` : '',
-            channel: req.user.channel._id || req.user.channel,
-            uploader: req.user._id,
-            category: category || 'Other',
-            tags: tags ? tags.split(',').map(t => t.trim()) : [],
-            duration: duration || '0:00'
-        });
+        // Upload Video
+        const videoName = `video-${channel_id}-${Date.now()}`;
+        const videoUrl = await uploadFile(req.files.video[0], 'videos', videoName);
 
-        await video.save();
+        // Upload Thumbnail
+        let thumbnailUrl = '';
+        if (req.files?.thumbnail?.[0]) {
+            const thumbName = `thumb-${channel_id}-${Date.now()}`;
+            thumbnailUrl = await uploadFile(req.files.thumbnail[0], 'thumbnails', thumbName);
+        }
 
-        // Increment video count on channel
-        await Channel.findByIdAndUpdate(video.channel, { $inc: { videoCount: 1 } });
+        const { data: video, error } = await supabase
+            .from('videos')
+            .insert([{
+                title,
+                description,
+                video_url: videoUrl,
+                thumbnail_url: thumbnailUrl,
+                channel_id,
+                uploader_id: req.user.id,
+                category: category || 'Other',
+                tags: tags ? tags.split(',').map(t => t.trim()) : [],
+                duration: duration || '0:00'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Increment video count
+        // Note: Supabase doesn't have $inc simply, we can use an RPC or just 2 queries. 
+        // For simplicity: fetch channel, increment, update.
+        const { data: channelData } = await supabase.from('channels').select('video_count').eq('id', channel_id).single();
+        await supabase.from('channels').update({ video_count: (channelData?.video_count || 0) + 1 }).eq('id', channel_id);
 
         res.status(201).json({ message: 'Video uploaded successfully', video });
     } catch (error) {
+        console.error('Video Upload Error:', error);
         res.status(500).json({ message: error.message });
     }
 });
 
-// Get all videos (with pagination and filtering)
+// Get all videos
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const category = req.query.category;
-        const sort = req.query.sort || 'newest';
 
-        const query = {};
-        if (category && category !== 'All') query.category = category;
+        let query = supabase
+            .from('videos')
+            .select(`
+                *,
+                channel:channels!inner(name, avatar, handle),
+                uploader:users!inner(username, avatar)
+            `, { count: 'exact' });
 
-        let sortOption = {};
-        switch (sort) {
-            case 'popular': sortOption = { views: -1 }; break;
-            case 'oldest': sortOption = { createdAt: 1 }; break;
-            default: sortOption = { createdAt: -1 };
+        if (category && category !== 'All') {
+            query = query.eq('category', category);
         }
 
-        const videos = await Video.find(query)
-            .populate({ path: 'channel', select: 'name avatar handle' })
-            .populate('uploader', 'username avatar')
-            .sort(sortOption)
-            .skip((page - 1) * limit)
-            .limit(limit);
+        // Pagination
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
 
-        const total = await Video.countDocuments(query);
+        const { data: videos, count, error } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+        if (error) throw error;
 
         res.json({
             videos,
             pagination: {
                 page,
                 limit,
-                total,
-                pages: Math.ceil(total / limit)
+                total: count,
+                pages: Math.ceil(count / limit)
             }
         });
     } catch (error) {
@@ -127,25 +139,37 @@ router.get('/', async (req, res) => {
 // Get single video
 router.get('/:id', optionalAuth, async (req, res) => {
     try {
-        const video = await Video.findByIdAndUpdate(
-            req.params.id,
-            { $inc: { views: 1 } },
-            { returnDocument: 'after' }
-        )
-            .populate({ path: 'channel', select: 'name avatar handle subscriberCount' })
-            .populate('uploader', 'username avatar');
-
-        if (!video) {
-            return res.status(404).json({ message: 'Video not found' });
+        // Increment views (Non-atomic increment for simplicity)
+        // Ideally use RPC for atomic increment
+        const { data: current } = await supabase.from('videos').select('views').eq('id', req.params.id).single();
+        if (current) {
+            await supabase.from('videos').update({ views: current.views + 1 }).eq('id', req.params.id);
         }
 
+        const { data: video, error } = await supabase
+            .from('videos')
+            .select(`
+                *,
+                channel:channels!inner(name, avatar, handle, subscriber_count),
+                uploader:users!inner(username, avatar)
+            `)
+            .eq('id', req.params.id)
+            .single();
+
+        if (error || !video) return res.status(404).json({ message: 'Video not found' });
+
         // Get comments
-        const comments = await Comment.find({ video: video._id })
-            .populate('user', 'username avatar')
-            .sort({ createdAt: -1 })
+        const { data: comments } = await supabase
+            .from('comments')
+            .select(`
+                *,
+                user:users!inner(username, avatar)
+            `)
+            .eq('video_id', req.params.id)
+            .order('created_at', { ascending: false })
             .limit(50);
 
-        res.json({ video, comments });
+        res.json({ video, comments: comments || [] });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -154,75 +178,82 @@ router.get('/:id', optionalAuth, async (req, res) => {
 // Get videos by channel
 router.get('/channel/:channelId', async (req, res) => {
     try {
-        const videos = await Video.find({ channel: req.params.channelId })
-            .populate({ path: 'channel', select: 'name avatar handle' })
-            .sort({ createdAt: -1 });
+        const { data: videos, error } = await supabase
+            .from('videos')
+            .select(`
+                 *,
+                channel:channels!inner(name, avatar, handle)
+            `)
+            .eq('channel_id', req.params.channelId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
         res.json({ videos });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// Like video
-router.put('/:id/like', auth, async (req, res) => {
+// Like/Dislike Logic
+// We will use the 'likes' table: user_id, video_id, type ('like' or 'dislike')
+const handleLikeDislike = async (req, res, type) => {
     try {
-        const video = await Video.findById(req.params.id);
-        if (!video) return res.status(404).json({ message: 'Video not found' });
+        const video_id = req.params.id;
+        const user_id = req.user.id;
 
-        const userId = req.user._id;
-        const likeIndex = video.likes.indexOf(userId);
-        const dislikeIndex = video.dislikes.indexOf(userId);
+        // Check existing vote
+        const { data: existing } = await supabase
+            .from('likes')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('video_id', video_id)
+            .single();
 
-        if (likeIndex > -1) {
-            video.likes.splice(likeIndex, 1); // Un-like
+        if (existing) {
+            if (existing.type === type) {
+                // Toggle OFF (Remove vote)
+                await supabase.from('likes').delete().eq('id', existing.id);
+            } else {
+                // Change vote (Update type)
+                await supabase.from('likes').update({ type }).eq('id', existing.id);
+            }
         } else {
-            video.likes.push(userId);
-            if (dislikeIndex > -1) video.dislikes.splice(dislikeIndex, 1); // Remove dislike
+            // New vote
+            await supabase.from('likes').insert([{ user_id, video_id, type }]);
         }
 
-        await video.save();
-        res.json({ likes: video.likes.length, dislikes: video.dislikes.length });
+        // Get counts
+        const { count: likes } = await supabase.from('likes').select('id', { count: 'exact', head: true }).eq('video_id', video_id).eq('type', 'like');
+        const { count: dislikes } = await supabase.from('likes').select('id', { count: 'exact', head: true }).eq('video_id', video_id).eq('type', 'dislike');
+
+        res.json({ likes, dislikes });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-});
+};
 
-// Dislike video
-router.put('/:id/dislike', auth, async (req, res) => {
-    try {
-        const video = await Video.findById(req.params.id);
-        if (!video) return res.status(404).json({ message: 'Video not found' });
-
-        const userId = req.user._id;
-        const dislikeIndex = video.dislikes.indexOf(userId);
-        const likeIndex = video.likes.indexOf(userId);
-
-        if (dislikeIndex > -1) {
-            video.dislikes.splice(dislikeIndex, 1);
-        } else {
-            video.dislikes.push(userId);
-            if (likeIndex > -1) video.likes.splice(likeIndex, 1);
-        }
-
-        await video.save();
-        res.json({ likes: video.likes.length, dislikes: video.dislikes.length });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+router.put('/:id/like', auth, (req, res) => handleLikeDislike(req, res, 'like'));
+router.put('/:id/dislike', auth, (req, res) => handleLikeDislike(req, res, 'dislike'));
 
 // Add comment
 router.post('/:id/comments', auth, async (req, res) => {
     try {
         const { text, parentComment } = req.body;
-        const comment = new Comment({
-            text,
-            user: req.user._id,
-            video: req.params.id,
-            parentComment: parentComment || null
-        });
-        await comment.save();
-        await comment.populate('user', 'username avatar');
+        const { data: comment, error } = await supabase
+            .from('comments')
+            .insert([{
+                text,
+                user_id: req.user.id,
+                video_id: req.params.id,
+                parent_comment_id: parentComment || null
+            }])
+            .select(`
+                *,
+                user:users!inner(username, avatar)
+            `)
+            .single();
+
+        if (error) throw error;
         res.status(201).json({ comment });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -232,15 +263,18 @@ router.post('/:id/comments', auth, async (req, res) => {
 // Delete video
 router.delete('/:id', auth, async (req, res) => {
     try {
-        const video = await Video.findById(req.params.id);
-        if (!video) return res.status(404).json({ message: 'Video not found' });
-        if (video.uploader.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Not authorized' });
-        }
+        const { data: video } = await supabase.from('videos').select('uploader_id, channel_id').eq('id', req.params.id).single();
 
-        await Video.findByIdAndDelete(req.params.id);
-        await Comment.deleteMany({ video: req.params.id });
-        await Channel.findByIdAndUpdate(video.channel, { $inc: { videoCount: -1 } });
+        if (!video) return res.status(404).json({ message: 'Video not found' });
+        if (video.uploader_id !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
+
+        await supabase.from('videos').delete().eq('id', req.params.id);
+
+        // Decrement channel video count
+        const { data: channelData } = await supabase.from('channels').select('video_count').eq('id', video.channel_id).single();
+        if (channelData && channelData.video_count > 0) {
+            await supabase.from('channels').update({ video_count: channelData.video_count - 1 }).eq('id', video.channel_id);
+        }
 
         res.json({ message: 'Video deleted' });
     } catch (error) {

@@ -3,20 +3,24 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const { connectDB, getLastError } = require('./config/db');
+// const { connectDB, getLastError } = require('./config/db');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
 const videoRoutes = require('./routes/videos');
-const postRoutes = require('./routes/posts');
-const subscriptionRoutes = require('./routes/subscriptions');
-const searchRoutes = require('./routes/search');
+const authRoutes = require('./routes/auth');
+const channelRoutes = require('./routes/channels');
+const videoRoutes = require('./routes/videos');
+// const postRoutes = require('./routes/posts'); // TODO: Migrate to Supabase
+// const subscriptionRoutes = require('./routes/subscriptions'); // TODO: Migrate to Supabase
+// const searchRoutes = require('./routes/search'); // TODO: Migrate to Supabase
 
 const app = express();
 
 // Connect to MongoDB
-connectDB();
+// Connect to MongoDB - REMOVED for Supabase Migration
+// connectDB();
 
 // Middleware
 app.use(cors({
@@ -42,28 +46,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Root route (Moved higher for better matching)
-app.get('/', (req, res) => {
-    const readyState = require('mongoose').connection.readyState;
-    const dbStatus = readyState === 1 ? '✅ Connected' : '❌ Disconnected';
-    const errorMsg = getLastError() || (readyState === 0 ? 'Connecting...' : 'Unknown Error');
+const supabase = require('./config/supabase');
 
-    res.send(`
-        <div style="font-family: sans-serif; padding: 20px;">
-            <h1>🚀 OpfFarmy API is running!</h1>
-            <p>Database Status: <strong>${dbStatus}</strong></p>
-            ${readyState !== 1 ? `<div style="background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; border: 1px solid #ef5350;">
-                <strong>Error Details:</strong> ${errorMsg}
-                <br><br>
-                <em>Common Fixes:</em>
-                <ul>
-                    <li>Check if IP <code>0.0.0.0/0</code> is whitelisted in MongoDB Atlas Network Access.</li>
-                    <li>Check if the username/password in MONGODB_URI are correct.</li>
-                    <li>Ensure MONGODB_URI is added to Vercel/Render Environment Variables.</li>
-                </ul>
-            </div>` : ''}
-            <p>Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>
-        </div>
-    `);
+// Root route (Supabase Connected)
+app.get('/', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+        const dbStatus = error ? '❌ Disconnected' : '✅ Connected';
+
+        res.send(`
+            <div style="font-family: sans-serif; padding: 20px;">
+                <h1>🚀 OpfFarmy API is running! (Supabase Edition ⚡)</h1>
+                <p>Database Status: <strong>${dbStatus}</strong></p>
+                <p>Connect from your <a href="${process.env.FRONTEND_URL || '#'}">Frontend here</a>.</p>
+            </div>
+        `);
+    } catch (err) {
+        res.send(`<h1>❌ Server Error</h1><p>${err.message}</p>`);
+    }
 });
 
 // Diagnostic test route
@@ -81,9 +81,9 @@ app.use('/uploads', express.static(uploadsPath));
 app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/videos', videoRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/search', searchRoutes);
+// app.use('/api/posts', postRoutes);
+// app.use('/api/subscriptions', subscriptionRoutes);
+// app.use('/api/search', searchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
