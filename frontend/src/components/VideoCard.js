@@ -3,7 +3,7 @@ import Link from 'next/link';
 import './VideoCard.css';
 
 export default function VideoCard({ video }) {
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://ytback-aff991tmg-pravinkumars-projects-014325e2.vercel.app';
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://ytback-three.vercel.app';
 
     const formatViews = (views) => {
         if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;

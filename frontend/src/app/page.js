@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import VideoCard from '../components/VideoCard';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ytback-aff991tmg-pravinkumars-projects-014325e2.vercel.app/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ytback-three.vercel.app/api';
 
 const categories = ['All', 'Music', 'Gaming', 'Education', 'Entertainment', 'Sports', 'News', 'Technology', 'Comedy', 'Vlogs'];
 
