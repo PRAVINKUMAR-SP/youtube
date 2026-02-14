@@ -1,0 +1,14 @@
+# Common
+node_modules/
+.env
+.env.local
+.DS_Store
+
+# Frontend
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Backend
+backend/uploads/
+backend/*.log

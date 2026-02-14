@@ -1,0 +1,237 @@
+.watch-page {
+    max-width: 1200px;
+}
+
+.video-player-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.watch-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 16px 0 12px;
+    line-height: 1.3;
+}
+
+.watch-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #272727;
+}
+
+.watch-channel-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.watch-channel-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff4444, #ff6b6b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    overflow: hidden;
+}
+
+.watch-channel-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.watch-channel-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.watch-channel-name {
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    text-decoration: none;
+}
+
+.watch-channel-name:hover {
+    color: #e5e5e5;
+}
+
+.watch-channel-subs {
+    color: #aaa;
+    font-size: 13px;
+}
+
+.watch-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.watch-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #272727;
+    border: none;
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.watch-action-btn:hover {
+    background: #3a3a3a;
+}
+
+.views-count {
+    cursor: default;
+}
+
+.watch-description {
+    background: #272727;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #e5e5e5;
+}
+
+.watch-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.watch-tag {
+    color: #3ea6ff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.comments-section {
+    margin-top: 24px;
+}
+
+.comments-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+.comment-form {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.comment-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff4444, #ff6b6b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.comment-input-wrapper {
+    flex: 1;
+}
+
+.comment-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #303030;
+    padding: 8px 0;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+}
+
+.comment-input:focus {
+    border-bottom-color: white;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.comment-item {
+    display: flex;
+    gap: 12px;
+}
+
+.comment-body {
+    flex: 1;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.comment-username {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.comment-time {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.comment-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e5e5e5;
+}
+
+@media (max-width: 768px) {
+    .watch-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .watch-title {
+        font-size: 18px;
+    }
+}

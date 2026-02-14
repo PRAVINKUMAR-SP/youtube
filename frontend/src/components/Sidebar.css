@@ -1,0 +1,132 @@
+.sidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    background: #0f0f0f;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: width 0.2s ease, transform 0.2s ease;
+    z-index: 90;
+    scrollbar-width: thin;
+    scrollbar-color: #555 transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.sidebar.collapsed {
+    width: 72px;
+}
+
+.sidebar-content {
+    padding: 12px 0;
+}
+
+.sidebar-section {
+    padding: 0 12px;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: #e5e5e5;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-item:hover {
+    background: #272727;
+}
+
+.sidebar-item.active {
+    background: #272727;
+    font-weight: 600;
+}
+
+.sidebar-item svg {
+    flex-shrink: 0;
+}
+
+.collapsed .sidebar-item {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 4px;
+    text-align: center;
+    justify-content: center;
+}
+
+.collapsed .sidebar-label {
+    font-size: 10px;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: #272727;
+    margin: 12px 0;
+}
+
+.sidebar-footer {
+    padding: 16px 24px;
+    color: #717171;
+    font-size: 12px;
+}
+
+.sidebar-footer p {
+    margin: 4px 0;
+}
+
+.collapsed .sidebar-footer {
+    display: none;
+}
+
+@media (max-width: 1200px) {
+    .sidebar {
+        width: 72px;
+    }
+
+    .sidebar.open {
+        width: 240px;
+    }
+
+    .sidebar:not(.open) .sidebar-item {
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 4px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .sidebar:not(.open) .sidebar-label {
+        font-size: 10px;
+    }
+
+    .sidebar:not(.open) .sidebar-footer {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        width: 240px;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+    }
+}
