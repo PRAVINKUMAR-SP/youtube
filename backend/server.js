@@ -41,7 +41,12 @@ app.get('/', (req, res) => {
 app.get('/test', (req, res) => res.json({ message: 'Backend is reachable!' }));
 
 // Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const fs = require('fs');
+const uploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsPath) && process.env.NODE_ENV !== 'production') {
+    fs.mkdirSync(uploadsPath);
+}
+app.use('/uploads', express.static(uploadsPath));
 
 // API Routes
 app.use('/api/auth', authRoutes);
