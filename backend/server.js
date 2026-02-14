@@ -37,6 +37,11 @@ app.use('/api/posts', postRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/search', searchRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+    res.send('<h1>🚀 OpfFarmy API is running!</h1><p>The backend is healthy. Connect from your <a href="https://yt-seven-beige.vercel.app">Frontend here</a>.</p>');
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'OpfFarmy API is running' });
